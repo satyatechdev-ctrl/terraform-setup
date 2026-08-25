@@ -30,9 +30,8 @@ jobs:
         if: ${{ hashFiles('package.json') != '' }}
         run: npm run build
 
-      - name: Verify build configuration
-        if: ${{ hashFiles('package.json') == '' }}
-        run: echo "No package.json found; skipping npm build"
+      - name: Simulate build failure
+        run: exit 1
 
   notify-devops-agent:
     name: Notify DevOps Agent
