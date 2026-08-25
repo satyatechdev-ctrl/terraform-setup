@@ -46,11 +46,36 @@ jobs:
         run: |
           set -euo pipefail
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          PAYLOAD="{\"eventType\":\"incident\",\"incidentId\":\"gha-${{ github.run_id }}\",\"action\":\"created\",\"priority\":\"HIGH\",\"title\":\"CI/CD Pipeline Failed: ${{ github.workflow }}\",\"description\":\"Workflow ${{ github.workflow }} failed on branch ${{ github.ref_name }} (run #${{ github.run_number }}). Commit: ${{ github.sha }}. See: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"timestamp\":\"${TIMESTAMP}\",\"service\":\"my-service\",\"data\":{\"repository\":\"${{ github.repository }}\",\"run_id\":\"${{ github.run_id }}\",\"run_url\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"branch\":\"${{ github.ref_name }}\",\"commit_sha\":\"${{ github.sha }}\"}}"
+          export TIMESTAMP
+          export INCIDENT_ID="gha-${{ github.run_id }}"
+          export WORKFLOW_NAME="${{ github.workflow }}"
+          export REF_NAME="${{ github.ref_name }}"
+          export RUN_NUMBER="${{ github.run_number }}"
+          export COMMIT_SHA="${{ github.sha }}"
+          export RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          export REPOSITORY="${{ github.repository }}"
+          export RUN_ID="${{ github.run_id }}"
+
+          PAYLOAD=$(jq -cn \
+            --arg eventType "incident" \
+            --arg incidentId "${INCIDENT_ID}" \
+            --arg action "created" \
+            --arg priority "HIGH" \
+            --arg title "CI/CD Pipeline Failed: ${WORKFLOW_NAME}" \
+            --arg description "Workflow ${WORKFLOW_NAME} failed on branch ${REF_NAME} (run #${RUN_NUMBER}). Commit: ${COMMIT_SHA}. See: ${RUN_URL}" \
+            --arg timestamp "${TIMESTAMP}" \
+            --arg service "my-service" \
+            --arg repository "${REPOSITORY}" \
+            --arg run_id "${RUN_ID}" \
+            --arg run_url "${RUN_URL}" \
+            --arg branch "${REF_NAME}" \
+            --arg commit_sha "${COMMIT_SHA}" \
+            '{eventType:$eventType,incidentId:$incidentId,action:$action,priority:$priority,title:$title,description:$description,timestamp:$timestamp,service:$service,data:{repository:$repository,run_id:$run_id,run_url:$run_url,branch:$branch,commit_sha:$commit_sha}}')
+          echo "${PAYLOAD}" | jq empty
 
           SIGNATURE=$(printf '%s' "${TIMESTAMP}:${PAYLOAD}" | openssl dgst -sha256 -hmac "${WEBHOOK_SECRET}" -binary | base64)
 
-          curl --fail --silent --show-error --request POST "${WEBHOOK_URL}" \
+          curl --fail-with-body --silent --show-error --request POST "${WEBHOOK_URL}" \
             --header "Content-Type: application/json" \
             --header "x-amzn-event-timestamp: ${TIMESTAMP}" \
             --header "x-amzn-event-signature: ${SIGNATURE}" \
