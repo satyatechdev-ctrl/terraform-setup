@@ -15,8 +15,24 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        if: ${{ hashFiles('package.json') != '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        if: ${{ hashFiles('package.json') != '' }}
+        run: npm ci
+
       - name: Run build
-        run: echo "Build completed"
+        if: ${{ hashFiles('package.json') != '' }}
+        run: npm run build
+
+      - name: Verify build configuration
+        if: ${{ hashFiles('package.json') == '' }}
+        run: echo "No package.json found; skipping npm build"
 
   notify-devops-agent:
     name: Notify DevOps Agent
